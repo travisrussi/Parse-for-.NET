@@ -20,6 +20,7 @@
  */
 
 using System;
+using System.Net;
 using System.Text;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,26 +40,33 @@ namespace ParseTests
 		
         public Tests()
         {
-            localClient = new Parse.ParseClient("CsQUidbvlr7hxU6KAScTXZfri7RCUxupK6kxmLvy", "h2W1KKwr3daS3oY8NFvP6KPrmMmPFoNnDILnWG9Y");
-        }
+			localClient = new Parse.ParseClient("LGN3l8M0YnFnJYZFVcOpbjKFM9pW031Ix74xLY1S", "WuOVNEOholg20gBoUnvguoMvL9nZBwDSO8SgiR19", "Kx7YbbUawvWwBQLqXRbY16URoGWvvPVfpjTUbncL");
+		}
 		
 
         [Test]
         public void TestMethod1()
         {
             string fileContents = "This is a test file.";
-            File.WriteAllText("testFile.txt", fileContents);
-            Parse.ParseFile parseFile = new Parse.ParseFile("testFile.txt");
-            Parse.ParseFile testFile = localClient.CreateFile(parseFile);
-
-            //Test to make sure test file is returned after creation.
+			string testFileLocalPath = "testFile.txt";
+            File.WriteAllText(testFileLocalPath, fileContents);
+            Parse.ParseFile parseFile = new Parse.ParseFile(testFileLocalPath);
+			Parse.ParseFile testFile = localClient.CreateFile(parseFile);
+			//Test to make sure test file is returned after creation.
             Assert.IsNotNull(testFile);
-
+			Console.WriteLine(testFileLocalPath + " uploaded to :" + testFile.Url);
+			//access the file outside the parse api
+			WebRequest fileRequest = WebRequest.Create(testFile.Url);
+            fileRequest.Method = "GET";
+            HttpWebResponse foundTestFile = (HttpWebResponse)fileRequest.GetResponse();
+			// we don't have to stream the body content - just check the status code
+			Assert.AreEqual (HttpStatusCode.OK, foundTestFile.StatusCode);
+			
             Parse.ParseObject testObject = new Parse.ParseObject("ClassOne");
             testObject["foo"] = "bar";
             //Create a new object
             testObject = localClient.CreateObject(testObject);
-
+			
             //Test to make sure we returned a ParseObject
             Assert.IsNotNull(testObject);
             //Test to make sure we were assigned an object id and the object was actually remotely created
@@ -88,6 +96,18 @@ namespace ParseTests
 
 			//Cleanup
             localClient.DeleteObject(testObject);
+			
+			localClient.DeleteFile (testFile);
+			//verify that the deleted file is no longer accessible
+			try {
+				WebRequest deletedFileRequest = WebRequest.Create(testFile.Url);
+	            deletedFileRequest.Method = "GET";
+	            HttpWebResponse deletedTestFile = (HttpWebResponse)deletedFileRequest.GetResponse();
+				Assert.That(deletedTestFile.StatusCode == HttpStatusCode.Forbidden || deletedTestFile.StatusCode == HttpStatusCode.NotFound);
+			} catch (WebException accessException) {
+				Assert.That(accessException.Message.Contains("403") || accessException.Message.Contains("404"));
+			}
+				
         }
 
         [Test]

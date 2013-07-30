@@ -42,7 +42,7 @@ namespace ParseTests
 		
         public BasicAPITests()
         {
-            localClient = new Parse.ParseClient("CsQUidbvlr7hxU6KAScTXZfri7RCUxupK6kxmLvy", "h2W1KKwr3daS3oY8NFvP6KPrmMmPFoNnDILnWG9Y");
+            localClient = new Parse.ParseClient("LGN3l8M0YnFnJYZFVcOpbjKFM9pW031Ix74xLY1S", "WuOVNEOholg20gBoUnvguoMvL9nZBwDSO8SgiR19", "Kx7YbbUawvWwBQLqXRbY16URoGWvvPVfpjTUbncL");
 			random = new Random();
         }
 		
