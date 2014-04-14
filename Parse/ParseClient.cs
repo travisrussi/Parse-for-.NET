@@ -32,17 +32,17 @@ namespace Parse
     {
         public String ApplicationId { get; set; }
         public String ApplicationKey { get; set; }
+		public String FileManagementKey { get; set; }
         public Int32 ConnectionTimeout { get; set; }
 
         private String classEndpoint = "https://api.parse.com/1/classes";
-        private String fileEndpoint = "http://api.parse.com/1/files";
-
+		private String fileEndpoint = "https://api.parse.com/1/files";
         /// <summary>
         /// Returns a new ParseClient to interact with the Parse REST API
         /// </summary>
         /// <param name="appId">Your application ID (found in the dashboard)</param>
         /// <param name="key">Your application key (found in the dashboard)</param>
-        public ParseClient(String appId, String key, Int32 timeout = 100000)
+        public ParseClient(String appId, String key, String masterKey, Int32 timeout = 100000)
         {
             if (String.IsNullOrEmpty(appId) || String.IsNullOrEmpty(key))
             {
@@ -51,6 +51,7 @@ namespace Parse
 
             ApplicationId = appId;
             ApplicationKey = key;
+			FileManagementKey = masterKey;
             ConnectionTimeout = timeout;
         }
 
@@ -187,24 +188,19 @@ namespace Parse
             {
                 throw new ArgumentNullException();
             }
-
+			WebHeaderCollection parseHeaders = new WebHeaderCollection();
+			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
+			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
             WebRequest webRequest = WebRequest.Create(classEndpoint + "/" + DestinationObject.Class + "/" + DestinationObject.objectId);
-            webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
+            // webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
             webRequest.Method = "DELETE";
-
+			webRequest.Headers = parseHeaders;
             webRequest.Timeout = ConnectionTimeout;
 
             HttpWebResponse responseObject = (HttpWebResponse)webRequest.GetResponse();
             responseObject.Close();
 
             return;
-        }
-
-        //Private Methods
-        private void SetBasicAuthHeader(WebRequest request)
-        {
-            byte[] authBytes = Encoding.UTF8.GetBytes(String.Format("{0}:{1}", ApplicationId, ApplicationKey).ToCharArray());
-            request.Headers["Authorization"] = "Basic " + Convert.ToBase64String(authBytes);
         }
 
         private String GetFromParse(String endpointUrl, Object queryObject = null, String Order = null, Int32 Limit = 0, Int32 Skip = 0)
@@ -230,12 +226,17 @@ namespace Parse
             {
                 finalEndpointUrl += "&skip=" + Skip.ToString();
             }
-
+			
+			WebHeaderCollection parseHeaders = new WebHeaderCollection();
+			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
+			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+			
             WebRequest webRequest = WebRequest.Create(finalEndpointUrl);
 
-            NetworkCredential streetCred = new NetworkCredential(ApplicationId, ApplicationKey);
-            webRequest.Credentials = streetCred;
+            //NetworkCredential streetCred = new NetworkCredential(ApplicationId, ApplicationKey);
+            //webRequest.Credentials = streetCred;
             webRequest.Method = "GET";
+			webRequest.Headers = parseHeaders;
             webRequest.Timeout = ConnectionTimeout;
 
             HttpWebResponse b = (HttpWebResponse)webRequest.GetResponse();
@@ -309,10 +310,14 @@ namespace Parse
                 ClassName += "/" + ObjectId;
             }
 			
+			WebHeaderCollection parseHeaders = new WebHeaderCollection();
+			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
+			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+			
             WebRequest webRequest = WebRequest.Create(classEndpoint + "/" + ClassName);
-            webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
+            //webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
             webRequest.Method = "POST";
-
+			webRequest.Headers = parseHeaders;
             if (String.IsNullOrEmpty(ObjectId) == false)
             {
                 webRequest.Method = "PUT";
@@ -323,6 +328,7 @@ namespace Parse
             {
                 //Remove Class value to prevent from storing as an actual column in the table.
                	PostObject["Class"] = null;
+				PostObject.Remove("Class");
             }
             String postString = JsonConvert.SerializeObject(PostObject);
 			PostObject["Class"] = classValue;
@@ -356,17 +362,21 @@ namespace Parse
         private String PostFileToParse(string filePath, string contentType)
         {
             string fileName = Path.GetFileName(filePath);
+			WebHeaderCollection parseHeaders = new WebHeaderCollection();
+			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
+			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+			
             WebRequest webRequest = WebRequest.Create(Path.Combine(fileEndpoint, fileName));
+            
             // Authentication is broken. Doesn't return 401. Force authorization header on POST rather than Credentials property
-            SetBasicAuthHeader(webRequest);
             webRequest.Method = "POST";
+			webRequest.Headers = parseHeaders;
             ServicePointManager.Expect100Continue = false;
             webRequest.ContentType = contentType;
             webRequest.Timeout = ConnectionTimeout;
             HttpWebRequest httpWebRequest = webRequest as HttpWebRequest;
             httpWebRequest.ProtocolVersion = HttpVersion.Version11;
-            httpWebRequest.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)";
-
+            
             var fileInfo = new FileInfo(filePath);
             webRequest.ContentLength = fileInfo.Length;
 
@@ -391,10 +401,13 @@ namespace Parse
 
         private void DeleteFileFromParse(string fileName)
         {
+			WebHeaderCollection parseHeaders = new WebHeaderCollection();
+			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
+			parseHeaders.Add ("X-Parse-Master-Key", FileManagementKey);
+			
             WebRequest webRequest = WebRequest.Create(Path.Combine(fileEndpoint, fileName));
-            Encoding.UTF8.GetBytes(String.Format("{0}:{1}", ApplicationId, ApplicationKey).ToCharArray());
-            SetBasicAuthHeader(webRequest);
             webRequest.Method = "DELETE";
+			webRequest.Headers = parseHeaders;
             webRequest.Timeout = ConnectionTimeout;            
             GetResponseString(webRequest);
         }
