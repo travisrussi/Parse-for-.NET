@@ -32,7 +32,7 @@ namespace Parse
     {
         public String ApplicationId { get; set; }
         public String ApplicationKey { get; set; }
-		public String FileManagementKey { get; set; }
+		public String MasterKey { get; set; }
         public Int32 ConnectionTimeout { get; set; }
 
         private String classEndpoint = "https://api.parse.com/1/classes";
@@ -51,7 +51,7 @@ namespace Parse
 
             ApplicationId = appId;
             ApplicationKey = key;
-			FileManagementKey = masterKey;
+			MasterKey = masterKey;
             ConnectionTimeout = timeout;
         }
 
@@ -218,6 +218,10 @@ namespace Parse
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
 			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+
+            if (!string.IsNullOrEmpty(MasterKey))
+                parseHeaders.Add("X-Parse-Master-Key", MasterKey);
+
             WebRequest webRequest = WebRequest.Create(classEndpoint + "/" + DestinationObject.Class + "/" + DestinationObject.objectId);
             // webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
             webRequest.Method = "DELETE";
@@ -257,7 +261,10 @@ namespace Parse
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
 			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
-			
+
+            if (!string.IsNullOrEmpty(MasterKey))
+                parseHeaders.Add("X-Parse-Master-Key", MasterKey);
+
             WebRequest webRequest = WebRequest.Create(finalEndpointUrl);
 
             //NetworkCredential streetCred = new NetworkCredential(ApplicationId, ApplicationKey);
@@ -340,6 +347,9 @@ namespace Parse
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
 			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+
+            if (!string.IsNullOrEmpty(MasterKey))
+                parseHeaders.Add("X-Parse-Master-Key", MasterKey);
 			
             WebRequest webRequest = WebRequest.Create(classEndpoint + "/" + ClassName);
             //webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
@@ -418,6 +428,9 @@ namespace Parse
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
 			parseHeaders.Add ("X-Parse-REST-API-Key", ApplicationKey);
+
+            if (!string.IsNullOrEmpty(MasterKey))
+                parseHeaders.Add("X-Parse-Master-Key", MasterKey);
 			
             WebRequest webRequest = WebRequest.Create(Path.Combine(fileEndpoint, fileName));
             
@@ -457,8 +470,8 @@ namespace Parse
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
             
-            if (!string.IsNullOrEmpty(FileManagementKey))
-			    parseHeaders.Add ("X-Parse-Master-Key", FileManagementKey);
+            if (!string.IsNullOrEmpty(MasterKey))
+			    parseHeaders.Add ("X-Parse-Master-Key", MasterKey);
 			
             WebRequest webRequest = WebRequest.Create(Path.Combine(fileEndpoint, fileName));
             webRequest.Method = "DELETE";
