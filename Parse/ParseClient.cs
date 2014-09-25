@@ -42,7 +42,7 @@ namespace Parse
         /// </summary>
         /// <param name="appId">Your application ID (found in the dashboard)</param>
         /// <param name="key">Your application key (found in the dashboard)</param>
-        public ParseClient(String appId, String key, String masterKey, Int32 timeout = 100000)
+        public ParseClient(String appId, String key, String masterKey = "", Int32 timeout = 100000)
         {
             if (String.IsNullOrEmpty(appId) || String.IsNullOrEmpty(key))
             {
@@ -105,18 +105,45 @@ namespace Parse
         /// Updates a pre-existing ParseObject
         /// </summary>
         /// <param name="PostObject">The object being updated</param>
-        public void UpdateObject(ParseObject PostObject)
+        public string UpdateObject(ParseObject PostObject)
         {
             if (PostObject == null)
             {
                 throw new ArgumentNullException();
             }
+            
             String postObjectClass = PostObject.Class;
             PostObject.Remove("Class");
-            PostObject.Remove("createdAt");
-            PostDataToParse(postObjectClass, PostObject, PostObject.objectId);
-			// Restore the class
-			PostObject.Class = postObjectClass; 
+
+            string postObjectObjectId = "";
+            if (PostObject.ContainsKey("objectId") && PostObject["objectId"] != null)
+            {
+                postObjectObjectId = PostObject["objectId"].ToString();
+            }
+
+            string postObjectCreatedAt = "";
+            if (PostObject.ContainsKey("createdAt") && PostObject["createdAt"] != null)
+            {
+                postObjectCreatedAt = PostObject["createdAt"].ToString();
+                PostObject.Remove("createdAt");
+            }
+
+            if (PostObject.ContainsKey("updatedAt") && PostObject["updatedAt"] != null)
+            {
+                PostObject.Remove("updatedAt");
+            }
+
+            var response = PostDataToParse(postObjectClass, PostObject, PostObject.objectId);
+			
+            // Restore the class
+			PostObject.Class = postObjectClass;
+            if (!string.IsNullOrEmpty(postObjectCreatedAt))
+                PostObject["createdAt"] = postObjectCreatedAt;
+
+            if (!string.IsNullOrEmpty(postObjectObjectId))
+                PostObject["objectId"] = postObjectObjectId;
+
+            return response;
         }
 
         /// <summary>
@@ -155,7 +182,7 @@ namespace Parse
         /// <returns>An array of Dictionaries containing the objects</returns>
         public ParseObject[] GetObjectsWithQuery(String ClassName, Object Query, String Order = null, Int32 Limit = 0, Int32 Skip = 0)
         {
-            if (String.IsNullOrEmpty(ClassName) || Query == null)
+            if (String.IsNullOrEmpty(ClassName)) // || Query == null)
             {
                 throw new ArgumentNullException();
             }
@@ -330,6 +357,19 @@ namespace Parse
                	PostObject["Class"] = null;
 				PostObject.Remove("Class");
             }
+            object objectIdValue = null;
+            if (PostObject.TryGetValue("objectId", out objectIdValue))
+            {
+                PostObject["objectId"] = null;
+                PostObject.Remove("objectId");
+            }
+            object updatedAtValue = null;
+            if (PostObject.TryGetValue("updatedAt", out updatedAtValue))
+            {
+                PostObject["updatedAt"] = null;
+                PostObject.Remove("updatedAt");
+            }
+
             String postString = JsonConvert.SerializeObject(PostObject);
 			PostObject["Class"] = classValue;
 			
@@ -342,21 +382,34 @@ namespace Parse
 			Stream writeStream = webRequest.GetRequestStream();
             writeStream.Write(postDataArray, 0, postDataArray.Length);
             writeStream.Close();
-			
-            HttpWebResponse responseObject = (HttpWebResponse)webRequest.GetResponse();
-            if (responseObject.StatusCode == HttpStatusCode.Created || true)
-            {
-                StreamReader responseReader = new StreamReader(responseObject.GetResponseStream());
-                String responseString = responseReader.ReadToEnd();
-                responseObject.Close();
 
-                return responseString;
-            }
-            else
+            HttpWebResponse responseObject = null;
+            try
             {
-                responseObject.Close();
-                throw new Exception("New object was not created. Server returned code " + responseObject.StatusCode);
+                responseObject = (HttpWebResponse) webRequest.GetResponse();
+                if (responseObject.StatusCode == HttpStatusCode.Created || true)
+                {
+                    StreamReader responseReader = new StreamReader(responseObject.GetResponseStream());
+                    String responseString = responseReader.ReadToEnd();
+                    responseObject.Close();
+
+                    return responseString;
+                }
+                else
+                {
+                    throw new Exception("New object was not created. Server returned code " + responseObject.StatusCode);
+                }
             }
+            catch (Exception ex)
+            {
+                throw new Exception("New object was not created. Server returned: " + ex.Message);
+            }
+            finally
+            {
+                if (responseObject != null)
+                    responseObject.Close();
+            }
+
         }
 
         private String PostFileToParse(string filePath, string contentType)
@@ -403,7 +456,9 @@ namespace Parse
         {
 			WebHeaderCollection parseHeaders = new WebHeaderCollection();
 			parseHeaders.Add ("X-Parse-Application-Id", ApplicationId);
-			parseHeaders.Add ("X-Parse-Master-Key", FileManagementKey);
+            
+            if (!string.IsNullOrEmpty(FileManagementKey))
+			    parseHeaders.Add ("X-Parse-Master-Key", FileManagementKey);
 			
             WebRequest webRequest = WebRequest.Create(Path.Combine(fileEndpoint, fileName));
             webRequest.Method = "DELETE";
