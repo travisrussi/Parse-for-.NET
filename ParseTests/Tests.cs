@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
+using System.Configuration;
 
 namespace ParseTests
 {
@@ -35,9 +36,13 @@ namespace ParseTests
     public class Tests
     {
         public Parse.ParseClient localClient;
+
+        public static string ParseAppId { get { return ConfigurationManager.AppSettings["ParseAppId"]; } }
+        public static string ParseRestKey { get { return ConfigurationManager.AppSettings["ParseRestKey"]; } }
+
         public Tests()
         {
-            localClient = new Parse.ParseClient("CsQUidbvlr7hxU6KAScTXZfri7RCUxupK6kxmLvy", "h2W1KKwr3daS3oY8NFvP6KPrmMmPFoNnDILnWG9Y");
+            localClient = new Parse.ParseClient(ParseAppId, ParseRestKey);
             //Uses TestApp
         }
 
