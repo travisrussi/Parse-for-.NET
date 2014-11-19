@@ -133,6 +133,7 @@ namespace ParseTests
             localClient.DeleteObject(testObject);
         }
 
+        [Ignore]
         [TestMethod]
         public void TestFunction()
         {
