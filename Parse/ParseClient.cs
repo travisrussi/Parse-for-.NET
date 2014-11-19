@@ -37,6 +37,8 @@ namespace Parse
 
         private String classEndpoint = "https://api.parse.com/1/classes";
 		private String fileEndpoint = "https://api.parse.com/1/files";
+        private String functionEndpoint = "https://api.parse.com/1/functions";
+
         /// <summary>
         /// Returns a new ParseClient to interact with the Parse REST API
         /// </summary>
@@ -232,6 +234,23 @@ namespace Parse
             responseObject.Close();
 
             return;
+        }
+
+        /// <summary>
+        /// Calls a Parse Cloud Function
+        /// </summary>
+        /// <param name="FunctionName">The name of the Parse Cloud function to call</param>
+        /// <param name="PostData">The object being updated</param>
+        public string CallFunction(string FunctionName, Dictionary<String, Object> PostData)
+        {
+            if (string.IsNullOrEmpty(FunctionName))
+            {
+                throw new ArgumentNullException();
+            }
+
+            var response = PostFunctionToParse(FunctionName, PostData);
+
+            return response;
         }
 
         private String GetFromParse(String endpointUrl, Object queryObject = null, String Order = null, Int32 Limit = 0, Int32 Skip = 0)
@@ -478,6 +497,66 @@ namespace Parse
 			webRequest.Headers = parseHeaders;
             webRequest.Timeout = ConnectionTimeout;            
             GetResponseString(webRequest);
+        }
+
+        private String PostFunctionToParse(String FunctionName, Dictionary<String, Object> PostObject)
+        {
+            if (String.IsNullOrEmpty(FunctionName) || PostObject == null)
+            {
+                throw new ArgumentNullException(string.Format("FunctionName: {0} PostObject: {1}", FunctionName, PostObject));
+            }
+
+            WebHeaderCollection parseHeaders = new WebHeaderCollection();
+            parseHeaders.Add("X-Parse-Application-Id", ApplicationId);
+            parseHeaders.Add("X-Parse-REST-API-Key", ApplicationKey);
+
+            if (!string.IsNullOrEmpty(MasterKey))
+                parseHeaders.Add("X-Parse-Master-Key", MasterKey);
+
+            WebRequest webRequest = WebRequest.Create(functionEndpoint + "/" + FunctionName);
+            //webRequest.Credentials = new NetworkCredential(ApplicationId, ApplicationKey);
+            webRequest.Method = "POST";
+            webRequest.Headers = parseHeaders;
+           
+            String postString = JsonConvert.SerializeObject(PostObject);
+           
+            byte[] postDataArray = Encoding.UTF8.GetBytes(postString);
+
+            webRequest.ContentLength = postDataArray.Length;
+            webRequest.Timeout = ConnectionTimeout;
+            webRequest.ContentType = "application/json";
+
+            Stream writeStream = webRequest.GetRequestStream();
+            writeStream.Write(postDataArray, 0, postDataArray.Length);
+            writeStream.Close();
+
+            HttpWebResponse responseObject = null;
+            try
+            {
+                responseObject = (HttpWebResponse)webRequest.GetResponse();
+                if (responseObject.StatusCode == HttpStatusCode.Created || true)
+                {
+                    var responseReader = new StreamReader(responseObject.GetResponseStream());
+                    var responseString = responseReader.ReadToEnd();
+                    responseObject.Close();
+
+                    return responseString;
+                }
+                else
+                {
+                    throw new Exception("New object was not created. Server returned code " + responseObject.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Function was not successfully called. Server returned: " + ex.Message);
+            }
+            finally
+            {
+                if (responseObject != null)
+                    responseObject.Close();
+            }
+
         }
 
         private class InternalDictionaryList

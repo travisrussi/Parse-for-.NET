@@ -87,7 +87,7 @@ namespace ParseTests
         #endregion
 
         [TestMethod]
-        public void TestMethod1()
+        public void TestFileAndObjectCreation()
         {
             string fileContents = "This is a test file.";
             File.WriteAllText("testFile.txt", fileContents);
@@ -131,6 +131,15 @@ namespace ParseTests
 
             //Cleanup
             localClient.DeleteObject(testObject);
+        }
+
+        [TestMethod]
+        public void TestFunction()
+        {
+            var postData = new Dictionary<string, object>();
+            postData.Add("updateQueueQueryLimit", 10);
+
+            var result = localClient.CallFunction("updateQueues", postData);
         }
 
         [TestMethod]
